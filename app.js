@@ -116,10 +116,24 @@ function router() {
 }
 
 /* ===== Экраны ===== */
+// Задержка для анимации появления (мс) — элементы проявляются по очереди сверху вниз
+const delay = ms => `style="--d:${ms}ms"`;
+
+// Заголовок, который проявляется по словам. Возвращает HTML и момент, когда появится последнее слово.
+function revealWords(text, start, step) {
+  const words = text.split(' ');
+  return {
+    html: words.map((w, i) => `<span class="reveal reveal--word" ${delay(start + i * step)}>${esc(w)}</span>`).join(' '),
+    end: start + (words.length - 1) * step
+  };
+}
+
 function renderHome() {
   document.title = 'Вечером — что посмотреть сегодня';
 
-  const cards = DATA.filters.mood.map(o => {
+  const title = revealWords('Какое настроение сегодня?', 80, 70).html;
+
+  const cards = DATA.filters.mood.map((o, i) => {
     const cfg = MOOD_CARDS[o.id] || { text: '', posters: [] };
     const [left, center, right] = cfg.posters.map(movieById);
     const fan = [
@@ -127,7 +141,7 @@ function renderHome() {
       right && posterImg(right, 'fan__right', { decorative: true }),
       center && posterImg(center, 'fan__center', { decorative: true })
     ].filter(Boolean).join('');
-    return `<li>
+    return `<li class="reveal" ${delay(460 + i * 90)}>
       <a class="mood-card" href="${resultsHref({ mood: o.id })}">
         <div class="fan" aria-hidden="true">${fan}</div>
         <h2 class="mood-card__title">${esc(o.label)}</h2>
@@ -139,12 +153,12 @@ function renderHome() {
 
   app.innerHTML = `<section class="home">
     <div class="home__intro">
-      <p class="eyebrow">Добрый вечер</p>
-      <h1 class="home__title">Какое настроение сегодня?</h1>
-      <p class="home__lead">Выберите одно — подборка появится сразу. Время и компанию можно уточнить потом.</p>
+      <p class="eyebrow reveal" ${delay(0)}>Добрый вечер</p>
+      <h1 class="home__title">${title}</h1>
+      <p class="home__lead reveal" ${delay(360)}>Выберите одно — подборка появится сразу. Время и компанию можно уточнить потом.</p>
     </div>
     <ul class="moods">${cards}</ul>
-    <div class="home__random">
+    <div class="home__random reveal" ${delay(780)}>
       <p>Не хочется выбирать?</p>
       <button type="button" class="btn btn--secondary" data-random="all">${ICONS.shuffle()} Выбрать за меня</button>
     </div>
@@ -343,49 +357,53 @@ function renderMovie(movie, params) {
       </a>
     </li>`).join('');
 
+  // Появление: постер и название по словам, затем блоки информации сверху вниз
+  const title = revealWords(movie.title, 120, 60);
+  const t = title.end + 100;
+
   const link = (l, cls = '') => l?.url
     ? `<a class="movie__link ${cls}" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.label)} ${ICONS.external()}<span class="visually-hidden"> (откроется в новой вкладке)</span></a>`
     : '';
 
   app.innerHTML = `<article class="movie">
-    <a class="back" href="${back}">${ICONS.arrowLeft()} К подборке</a>
+    <a class="back reveal" ${delay(0)} href="${back}">${ICONS.arrowLeft()} К подборке</a>
 
     <div class="movie__layout">
-      <div class="movie__poster">${posterImg(movie)}</div>
+      <div class="movie__poster reveal reveal--poster" ${delay(60)}>${posterImg(movie)}</div>
 
       <div class="movie__info">
-        <h1 class="movie__title">${esc(movie.title)}</h1>
-        ${sub.length ? `<p class="movie__sub">${sub.join(' · ')}</p>` : ''}
+        <h1 class="movie__title">${title.html}</h1>
+        ${sub.length ? `<p class="movie__sub reveal" ${delay(t)}>${sub.join(' · ')}</p>` : ''}
 
-        <ul class="pills">
+        <ul class="pills reveal" ${delay(t + 70)}>
           <li class="pill">${movie.year}</li>
           <li class="pill">${movie.duration} ${plural(movie.duration, 'минута', 'минуты', 'минут')}</li>
           <li class="pill pill--accent">${ICONS.star(15)} ${formatRating(movie.rating)} ${esc(movie.ratingSource || '')}</li>
           ${movie.age ? `<li class="pill"><span class="visually-hidden">Возраст: </span>${esc(movie.age)}</li>` : ''}
         </ul>
 
-        ${movie.genres?.length ? `<p class="movie__genres">${movie.genres.map(esc).join(' · ')}</p>` : ''}
-        <p class="movie__desc">${esc(movie.description)}</p>
+        ${movie.genres?.length ? `<p class="movie__genres reveal" ${delay(t + 140)}>${movie.genres.map(esc).join(' · ')}</p>` : ''}
+        <p class="movie__desc reveal" ${delay(t + 210)}>${esc(movie.description)}</p>
 
-        ${movie.whyToday ? `<div class="why">
+        ${movie.whyToday ? `<div class="why reveal" ${delay(t + 280)}>
           <p class="why__label">Почему подойдёт сегодня</p>
           <p class="why__text">${esc(movie.whyToday)}</p>
         </div>` : ''}
 
-        <div class="movie__actions">
+        <div class="movie__actions reveal" ${delay(t + 350)}>
           <button type="button" class="btn btn--primary" data-watch>${ICONS.play()} Смотрю сегодня</button>
           <a class="btn btn--secondary" href="${back}">Показать другой вариант</a>
         </div>
         <p class="visually-hidden" aria-live="polite" id="watch-status"></p>
 
-        <div class="movie__links">
+        <div class="movie__links reveal" ${delay(t + 420)}>
           ${link(movie.trailer)}
           ${link(movie.whereToWatch, 'movie__link--where')}
         </div>
       </div>
     </div>
 
-    ${similar ? `<section class="similar" aria-labelledby="similar-title">
+    ${similar ? `<section class="similar reveal" ${delay(t + 520)} aria-labelledby="similar-title">
       <h2 class="similar__title" id="similar-title">Похожие фильмы</h2>
       <ul class="similar__list">${similar}</ul>
     </section>` : ''}
